@@ -1,0 +1,3 @@
+[submodule "src/mmocr_ros/mmocr_ros/mmocr"]
+	path = src/mmocr_ros/mmocr_ros/mmocr
+	url = https://github.com/FrancescoGervino13/mmocr.git
