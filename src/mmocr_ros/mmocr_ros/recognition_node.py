@@ -194,7 +194,7 @@ class RecognitionNode(Node):
                 return f"Error processing image: {str(e)}"
 
     def crop_and_recognise(self, image, bboxes):
-        """Detects text bounding boxes, crops them, and recognises text."""
+        """Takes text bounding boxes, crops them, and recognises text."""
 
         recognized_texts = []
 
