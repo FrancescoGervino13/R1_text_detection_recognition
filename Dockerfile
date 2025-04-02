@@ -5,16 +5,11 @@ FROM leogori/r1images:tourCore2_ubuntu24.04_jazzy_stable_cuda12.1
 RUN useradd -ms /bin/bash user
 
 # Set the working directory inside the container
+# Start from the base image
+FROM leogori/r1images:tourCore2_ubuntu24.04_jazzy_stable_cuda12.1
+
+# Set the working directory inside the container
 WORKDIR /workspace
-
-# Copy files to the workspace (optional: useful if you want to copy other files)
-# COPY . /workspace
-
-# Switch to non-root user
-USER user
-
-# Ensure Python 3 and necessary tools are installed in the container
-RUN python3 -m venv /workspace/ros_env
 
 # Clone the repository (as non-root)
 RUN git clone --recurse-submodules https://github.com/FrancescoGervino13/R1_text_detection_recognition.git
@@ -34,13 +29,20 @@ RUN /bin/bash -c "source /workspace/ros_env/bin/activate && pip install --no-cac
 RUN /bin/bash -c "source /workspace/ros_env/bin/activate && python -m ensurepip --upgrade && python -m pip install --upgrade setuptools"
 
 # Install additional Python modules (replace <module> with your actual module)
-RUN /bin/bash -c "source /workspace/ros_env/bin/activate && pip install --no-cache-dir <module>"
+#RUN /bin/bash -c "source /workspace/ros_env/bin/activate && pip install --no-cache-dir <module>"
 
 # Install openmim and required packages
 RUN /bin/bash -c "source /workspace/ros_env/bin/activate && pip install --no-cache-dir -U openmim"
+
+# Upgrade pip and setuptools inside the virtual environment
+RUN /bin/bash -c "source /workspace/ros_env/bin/activate && python -m ensurepip --upgrade && python -m pip install --upgrade setuptools"
+
 RUN /bin/bash -c "source /workspace/ros_env/bin/activate && mim install mmengine"
 RUN /bin/bash -c "source /workspace/ros_env/bin/activate && mim install mmcv"
 RUN /bin/bash -c "source /workspace/ros_env/bin/activate && mim install mmdet"
+
+# Install additional Python modules
+RUN /bin/bash -c "source /workspace/ros_env/bin/activate && pip install --no-cache-dir lark catkin_pkg empy==3.3.4 platformdirs"
 
 # Set the working directory to the mmocr directory
 WORKDIR /workspace/R1_text_detection_recognition/src/mmocr_ros/mmocr_ros/mmocr
