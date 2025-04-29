@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
+from sensor_msgs.msg import PointCloud2
 from openai import AzureOpenAI
 import base64
 import cv2
@@ -9,10 +10,11 @@ from io import BytesIO
 from PIL import Image
 
 from mmocr_interfaces.msg import ImageBoundingBoxes
+from mmocr_interfaces.msg import AlignedTextsClouds
 
 # Add keys for openAI
-AZURE_API_KEY=""
-AZURE_ENDPOINT=""
+AZURE_API_KEY="94ec2d76955a48488952c81f0d591e94"
+AZURE_ENDPOINT="https://iitlines-swecentral1.openai.azure.com/"
 
 class RecognitionNode(Node):
     def __init__(self):
@@ -24,32 +26,35 @@ class RecognitionNode(Node):
             )
         self.get_logger().info('Recognition Node is running...')
         self.subscriber = self.create_subscription(ImageBoundingBoxes, 'image_and_bboxes', self.callback, 10)
+        self.publisher = self.create_publisher(AlignedTextsClouds, 'aligned_texts_clouds', 10)
 
-    def callback(self, msg):
-        x_max = msg.image.width; y_max = msg.image.height
+    def callback(self, msg:ImageBoundingBoxes):
         image = np.frombuffer(msg.image.data, dtype=np.uint8).reshape(msg.image.height, msg.image.width, 3)
         bounding_boxes = msg.bounding_boxes
-        delta = 5
-        #print(bounding_boxes)
         # Reshape the flattened bounding boxes into groups of 8 (each representing a bounding box)
-        bboxes = np.array(bounding_boxes).reshape(-1, 8).tolist()
-        #print(bboxes)
-        bboxes = self.crop(bboxes, delta, x_max, y_max)
-        bboxes = self.merge(bboxes)
+        bboxes = np.array(bounding_boxes).reshape(-1, 4).tolist()
 
         recognized_texts, bboxes = self.crop_and_recognise(image,bboxes)
-        self.get_logger().info(f"Recognized text: {recognized_texts}")
-        self.get_logger().info(f"Bounding box: {bboxes}")
 
-        '''
-        # Show the cropped image
-        cv2.imshow("Image", image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        '''
+        msg_out = AlignedTextsClouds()
+        msg_out.point_cloud_list = msg.point_cloud_list
+        msg_out.text_list = recognized_texts
+        self.publisher.publish(msg_out)
+
+        for i in range(len(recognized_texts)):
+            #if recognized_texts[i] != "no text" and recognized_texts[i] != "\"no text\"" and recognized_texts[i] != "" :
+            self.get_logger().info(f"Recognized text: {recognized_texts[i]}")
+            self.get_logger().info(f"Bounding box: {bboxes[i]}")
+            # Show the cropped image
+            '''
+            cv2.imshow(recognized_texts[i], image[bboxes[i][0][1]:bboxes[i][1][1], bboxes[i][0][0]:bboxes[i][1][0]])
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+            '''
+        
     
     def crop(self, bboxes, delta=0, x_limit = 639, y_limit = 479) :
-        """ Modify the bounding boxes from tuples of 8 elements([x1 y1 x2 y2 x3 y3 x4 y4 x5 y5 x6 y6 x7 y7 x8 y8]) to [[x_top_left y, y_top_left],[x_bottom_right, y_bottom_right]] and also it widens the box by delta pixels"""
+        """ Modify the bounding boxes from tuples of 8 elements([x1 y1 x2 y2 x3 y3 x4 y4]) to [[x_top_left, y_top_left],[x_bottom_right, y_bottom_right]] and also it widens the box by delta pixels"""
         coords = []
         for bbox in bboxes:     
             x = [bbox[0],bbox[2],bbox[4],bbox[6]]
@@ -173,7 +178,7 @@ class RecognitionNode(Node):
                 messages = [
                     {"role": "system", "content": 
                     """
-                    Extract text from the provided image. If you are not at least 90 percent sure about the text, output "no text"
+                    Extract text from the provided image. If you are not at least 90 percent sure about what is written, output this precise message: "no text"
                     The output will be a python list with the recognised texts.
                     For example: ["text 1", "text 2", "text 3"].
                     """},
@@ -198,9 +203,9 @@ class RecognitionNode(Node):
 
         recognized_texts = []
 
-        for i in range(len(bboxes)) : 
-            x1, y1 = bboxes[i][0]
-            x2, y2 = bboxes[i][1]
+        for bbox in bboxes: 
+            x1 = bbox[0]; y1 = bbox[1]
+            x2 = bbox[2]; y2 = bbox[3]
 
             # Crop the image
             cropped_img = image[y1:y2, x1:x2]
