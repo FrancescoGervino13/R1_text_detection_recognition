@@ -19,7 +19,7 @@ WORKDIR /workspace/R1_text_detection_recognition
 
 # Create and activate the virtual environment, and install the necessary packages
 RUN python3 -m venv /workspace/ros_env && \
-    /bin/bash -c "source /workspace/ros_env/bin/activate && pip install --no-cache-dir torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124"
+    /bin/bash -c "source /workspace/ros_env/bin/activate && pip install --no-cache-dir torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu121"
 
 RUN /bin/bash -c "source /workspace/ros_env/bin/activate && pip install --no-cache-dir pyyaml"
 RUN /bin/bash -c "source /workspace/ros_env/bin/activate && pip install --no-cache-dir git+https://github.com/FrancescoGervino13/imgaug.git"
