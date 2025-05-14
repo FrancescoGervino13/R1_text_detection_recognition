@@ -1,3 +1,6 @@
 [submodule "src/mmocr_ros/mmocr_ros/mmocr"]
 	path = src/mmocr_ros/mmocr_ros/mmocr
 	url = https://github.com/FrancescoGervino13/mmocr.git
+[submodule "src/mmocr_ros/mmocr_ros/mmocv"]
+	path = src/mmocr_ros/mmocr_ros/mmocv
+	url = https://github.com/open-mmlab/mmcv.git
