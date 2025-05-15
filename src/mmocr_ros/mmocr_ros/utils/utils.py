@@ -244,9 +244,8 @@ def project_depth_bboxes_pc_torch(depth, bboxes, cv_image, calib_matrix, transfo
 
         pointclouds = []
         colors = []
-        if transform_matrix != None:
+        if transform_matrix is not None:
             tf_torch = torch.tensor(transform_matrix, dtype=torch.float32, device="cuda")
-            ones = torch.ones(pointcloud_bbox.shape[0], dtype=torch.float32 ,device="cuda")
 
         # filter depth coords based on bboxes
         for bbox in bboxes:
@@ -266,8 +265,9 @@ def project_depth_bboxes_pc_torch(depth, bboxes, cv_image, calib_matrix, transfo
             yy_bbox = (vv_bbox - cy) * depth[vv_bbox, uu_bbox] / fy
             zz_bbox = depth[vv_bbox, uu_bbox] / depth_factor
             pointcloud_bbox = torch.cat((xx_bbox.unsqueeze(1), yy_bbox.unsqueeze(1), zz_bbox.unsqueeze(1)), 1)
-            if transform_matrix != None:
-                hom_pointcloud_torch = torch.stack((pointcloud_bbox, ones), dim=1)
+            if transform_matrix is not None:
+                ones = torch.ones(pointcloud_bbox.shape[0], 1, dtype=torch.float32 ,device="cuda")
+                hom_pointcloud_torch = torch.cat((pointcloud_bbox, ones), dim=1)
                 pointcloud_bbox = (tf_torch @ hom_pointcloud_torch.T).T[:, :3]
 
             pointclouds.append(pointcloud_bbox.cpu().numpy())
