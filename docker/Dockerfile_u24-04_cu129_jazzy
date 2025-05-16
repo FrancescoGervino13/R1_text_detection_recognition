@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.9.0-cudnn-devel-ubuntu24.04
+FROM nvidia/cuda:12.9.0-devel-ubuntu24.04
 
 ARG RELEASE
 ARG LAUNCHPAD_BUILD_ARCH
@@ -61,36 +61,60 @@ RUN code --install-extension ms-vscode.cpptools \
 #ARG GIT_USERNAME
 #ARG GIT_USER_EMAIL
 #RUN git config --global user.name ${GIT_USERNAME} && git config --global user.email ${GIT_USER_EMAIL}
-
+SHELL ["/bin/bash", "-c"]
 # Installing python requirements
-RUN sudo apt update && sudo apt install -y python3-pip
-# Manually install 
+RUN sudo apt update && sudo apt install -y python3-pip python3-venv
+# For python3
+ENV PATH=/home/${USER}/.local/bin:$PATH
+# Create virtual env to avoid --break-system-packages and for compatibility
+RUN python3 -m venv /home/user1/work_env
+RUN source /home/user1/work_env/bin/activate && python3 -m ensurepip --upgrade && \
+    python3 -m pip install --upgrade setuptools
+# Manually install dependencies
 RUN sudo apt update && sudo apt install python3-opencv python3-shapely -y
-#RUN pip3 install torch torchvision
-#RUN pip3 install pyyaml lmdb matplotlib pyclipper pycocotools rapidfuzz scikit-image openai ninja
-#RUN pip3 install matplotlib "numpy == 1.21.5"
-#RUN pip3 install open3d "numpy == 1.21.5"
+RUN source /home/user1/work_env/bin/activate && pip install torch torchvision
+RUN source /home/user1/work_env/bin/activate &&  pip install pyyaml lmdb matplotlib pyclipper pycocotools rapidfuzz scikit-image openai ninja
+RUN source /home/user1/work_env/bin/activate && pip install numpy==1.26.4
+#RUN pip3 install open3d "numpy==1.26.4" --break-system-packages
 
 # Source ROS2
-#RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /home/${USER}/.bashrc
+RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /home/${USER}/.bashrc
 
-SHELL ["/bin/bash", "-c"]
+RUN git clone --recurse-submodules https://github.com/FrancescoGervino13/R1_text_detection_recognition.git
+RUN source /home/user1/work_env/bin/activate pip install git+https://github.com/FrancescoGervino13/imgaug.git
 
-#RUN git clone --recurse-submodules https://github.com/FrancescoGervino13/R1_text_detection_recognition.git
-#RUN pip3 install git+https://github.com/FrancescoGervino13/imgaug.git
-#
-#RUN pip3 install -U openmim
-## For python3 path config
-#ENV PATH=/home/${USER}/.local/bin:$PATH
-#ENV FORCE_CUDA="1"
-#ENV MMCV_WITH_OPS=1
-#RUN export FORCE_CUDA="1" && export MMCV_WITH_OPS=1 && mim install mmdet
-#RUN cd /workspace/R1_text_detection_recognition/src/mmocr_ros/mmocr_ros/mmocr && \
-#    pip3 install -v -e .
-#RUN cd R1_text_detection_recognition && \
-#    source /opt/ros/${ROS_DISTRO}/setup.bash && \
-#    colcon build --symlink-install
-#
+RUN source /home/user1/work_env/bin/activate &&  pip install -U openmim
+ENV FORCE_CUDA="1"
+ENV MMCV_WITH_OPS=1
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=video,compute,utility
+# mmdet supports compiler < gcc-12
+RUN sudo apt update && \
+    sudo apt install -y gcc-11 g++-11 &&\
+    sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 110
+ENV CC=/usr/bin/gcc-11
+ENV CXX=/usr/bin/g++-11
+ENV TORCH_CUDA_ARCH_LIST="8.6"
+# We need to upgrade setuptools because mmcv is not supported in python3.12
+RUN source /home/user1/work_env/bin/activate && python3 -m ensurepip --upgrade && \
+    python3 -m pip install --upgrade setuptools
+# mmdet supports compiler < gcc-12
+RUN source /home/user1/work_env/bin/activate && export TORCH_CUDA_ARCH_LIST="8.6" && export FORCE_CUDA="1" && export MMCV_WITH_OPS=1 && mim install mmdet
+RUN cd R1_text_detection_recognition/src/mmocr_ros/mmocr_ros/mmocr && \
+    source /home/user1/work_env/bin/activate && pip install -v -e .
+RUN cd R1_text_detection_recognition && \
+    source /opt/ros/${ROS_DISTRO}/setup.bash && \
+    colcon build --symlink-install
+# Update env sources
+RUN echo "source /home/user1/R1_text_detection_recognition/install/setup.bash" >> /home/${USER}/.bashrc
+ENV PYTHONPATH=$PYTHONPATH:/home/user1/R1_text_detection_recognition/src/mmocr_ros/mmocr_ros/mmocr
+# install platformdirs inside venv
+RUN source /home/user1/work_env/bin/activate && pip install platformdirs
+RUN echo "source /home/user1/work_env/bin/activate" >> ~/.bashrc
+# Weights of mmocr
+RUN wget https://download.openmmlab.com/mmocr/textdet/dbnetpp/dbnetpp_resnet50-dcnv2_fpnc_1200e_icdar2015/dbnetpp_resnet50-dcnv2_fpnc_1200e_icdar2015_20220829_230108-f289bd20.pth && \
+    mkdir -p .cache/torch/hub/checkpoints && \
+    mv dbnetpp_resnet50-dcnv2_fpnc_1200e_icdar2015_20220829_230108-f289bd20.pth .cache/torch/hub/checkpoints
+
 ## Cleanup
 RUN sudo apt update && sudo apt install -y iproute2 unzip terminator bash-completion gedit locate && sudo apt clean && sudo rm -rf /var/lib/apt/lists/* && sudo updatedb
-
