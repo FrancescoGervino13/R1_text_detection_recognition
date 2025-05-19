@@ -1,7 +1,6 @@
 from std_msgs.msg import Header
 from sensor_msgs.msg import PointField, PointCloud2
 import numpy as np
-import cv2
 import math
 from tf2_ros import TransformStamped
 import torch
@@ -98,112 +97,6 @@ def xyz_array_to_pointcloud2(points, stamp, frame_id):
 
     return msg
 
-def crop(bboxes, delta=0, x_limit = 639, y_limit = 479) :
-        """ Modify the bounding boxes from tuples of 8 elements([x1 y1 x2 y2 x3 y3 x4 y4]) to [[x_top_left, y_top_left],[x_bottom_right, y_bottom_right]] and also it widens the box by delta pixels"""
-        coords = []
-        for bbox in bboxes:     
-            x = [bbox[0],bbox[2],bbox[4],bbox[6]]
-            y = [bbox[1],bbox[3],bbox[5],bbox[7]]
-            x_tl = max(round(min(x))-delta,0); y_tl = max(round(min(y))-delta,0)
-            x_br = min(round(max(x))+delta,x_limit); y_br = min(round(max(y))+delta,y_limit)
-            coords.append([[x_tl,y_tl], [x_br,y_br]])
-
-        return coords
-    
-def merge(boxes) : 
-    
-    # tuplify
-    def tup(point):
-        return (point[0], point[1])
-
-    # returns true if the two boxes overlap
-    def overlap(source, target):
-        # unpack points
-        tl1, br1 = source
-        tl2, br2 = target
-
-        # checks
-        if (tl1[0] >= br2[0] or tl2[0] >= br1[0]):
-            return False
-        if (tl1[1] >= br2[1] or tl2[1] >= br1[1]):
-            return False
-        return True
-
-    # returns all overlapping boxes
-    def getAllOverlaps(boxes, bounds, index):
-        overlaps = []
-        for a in range(len(boxes)):
-            if a != index:
-                if overlap(bounds, boxes[a]):
-                    overlaps.append(a)
-        return overlaps
-
-    # go through the boxes and start merging
-    merge_margin = 15
-
-    # this is gonna take a long time
-    finished = False
-    highlight = [[0,0], [1,1]]
-    points = [[[0,0]]]
-    while not finished:
-        # set end con
-        finished = True
-
-        # loop through boxes
-        index = len(boxes) - 1
-        while index >= 0:
-            # grab current box
-            curr = boxes[index]
-
-            # add margin
-            tl = curr[0][:]
-            br = curr[1][:]
-            tl[0] -= merge_margin
-            tl[1] -= merge_margin
-            br[0] += merge_margin
-            br[1] += merge_margin
-
-            # get matching boxes
-            overlaps = getAllOverlaps(boxes, [tl, br], index)
-            
-            # check if empty
-            if len(overlaps) > 0:
-                # combine boxes
-                # convert to a contour
-                con = []
-                overlaps.append(index)
-                for ind in overlaps:
-                    tl, br = boxes[ind]
-                    con.append([tl])
-                    con.append([br])
-                con = np.array(con)
-
-                # get bounding rect
-                x,y,w,h = cv2.boundingRect(con)
-
-                # stop growing
-                w -= 1
-                h -= 1
-                merged = [[x,y], [x+w, y+h]]
-
-                # highlights
-                highlight = merged[:]
-                points = con
-
-                # remove boxes from list
-                overlaps.sort(reverse = True)
-                for ind in overlaps: del boxes[ind]
-                boxes.append(merged)
-
-                # set flag
-                finished = False
-                break
-
-            # increment
-            index -= 1
-    cv2.destroyAllWindows()
-
-    return boxes
 
 def project_depth_bboxes_pc_torch(depth, bboxes, cv_image, calib_matrix, transform_matrix = None, min_depth = 0.2, max_depth = 6.0, depth_factor=1.0, downsampling_factor=10.0, colored = True):
         """
@@ -275,3 +168,15 @@ def project_depth_bboxes_pc_torch(depth, bboxes, cv_image, calib_matrix, transfo
                 colors.append(cv_image[vv_bbox.cpu().numpy(), uu_bbox.cpu().numpy()])
         
         return bboxes, pointclouds, colors
+
+def load_config(file_path):
+    config = {}
+    with open(file_path, 'r') as f:
+        for line in f:
+            # Remove any leading/trailing whitespace, including newline characters
+            line = line.strip()
+            if line and '=' in line:
+                # Split the line into key and value
+                key, value = line.split('=', 1)
+                config[key.strip()] = value.strip()
+    return config

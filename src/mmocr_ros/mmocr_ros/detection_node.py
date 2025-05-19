@@ -5,7 +5,8 @@ import numpy as np
 import message_filters
 from rclpy.callback_groups import ReentrantCallbackGroup
 from tf2_ros import TransformListener, Buffer
-from utils.utils import crop, merge, xyzrgb_array_to_pointcloud2, xyz_array_to_pointcloud2, from_tf_to_matrix, project_depth_bboxes_pc_torch
+from utils.utils import xyzrgb_array_to_pointcloud2, xyz_array_to_pointcloud2, from_tf_to_matrix, project_depth_bboxes_pc_torch
+from utils.image_utils import crop, merge
 
 from mmocr_interfaces.msg import ImageBoundingBoxes
 from mmocr.apis import MMOCRInferencer
@@ -23,12 +24,14 @@ class DetectionNode(Node):
             ('img_topic', "/cer/realsense_repeater/color_image"),
             ('depth_topic', "/cer/realsense_repeater/depth_image"),
             ('info_topic', "/cer/realsense_repeater/camera_info"),
+            ('detection_confidence_threshold', 0.8),
             ('debug_pc', True)
         ])
         img_topic = self.get_parameter("img_topic").value
         depth_topic = self.get_parameter("depth_topic").value
         info_topic = self.get_parameter("info_topic").value
         self.debug_mode = self.get_parameter("debug_pc").value
+        self.confidence_threshold = self.get_parameter('detection_confidence_threshold').value
 
         self.tf_buffer = Buffer()
         self.tf_sub = TransformListener(self.tf_buffer, self)
@@ -46,7 +49,7 @@ class DetectionNode(Node):
         else:
             self.point_cloud_publisher = self.create_publisher(PointCloud2, 'pointcloud_bb', 10)
 
-    def camera_info_callback(self, msg):
+    def camera_info_callback(self, msg : CameraInfo):
         """
         Saves the calib matrix of the camera intrinsic parameters
         """
@@ -54,7 +57,7 @@ class DetectionNode(Node):
             self.calib_mat = np.array(msg.k, dtype=np.float32).reshape((3, 3))
             self.camera_info_available = True
 
-    def image_callback(self, img_msg : Image, depth_msg ):
+    def image_callback(self, img_msg : Image, depth_msg : Image):
         """Callback function to process incoming images."""
         if not self.camera_info_available:
             self.get_logger().error("Camera info not available yet.")
@@ -72,11 +75,9 @@ class DetectionNode(Node):
             depth = cv_depth.astype(np.float16)
             
             # Show topic's image
-            '''
-            cv_image_bgr = cv2.cvtColor(cv_image, cv2.COLOR_RGB2BGR)
-            cv2.imshow("Image", cv_image_bgr)
-            cv2.waitKey(1)            
-            '''
+            #cv_image_bgr = cv2.cvtColor(cv_image, cv2.COLOR_RGB2BGR)
+            #cv2.imshow("Image", cv_image_bgr)
+            #cv2.waitKey(1)            
             
             new_message = ImageBoundingBoxes()
             result = self.detector(cv_image)
@@ -87,12 +88,12 @@ class DetectionNode(Node):
             bboxes = predictions['det_polygons']
             scores = predictions['det_scores']
             # Filter out low-confidence detections
-            bboxes = [bbox for bbox, score in zip(bboxes, scores) if score > 0.8]
+            bboxes = [bbox for bbox, score in zip(bboxes, scores) if score > self.confidence_threshold]
 
             if len(bboxes) > 0 :
                 point_clouds = []
                 delta = 5
-                bboxes = crop(bboxes, delta, 639, 479)
+                bboxes = crop(bboxes, delta, img_msg.width - 1, img_msg.height - 1)
                 bboxes = merge(bboxes)
                 #print(bboxes)
                 _, pc_list, colors = project_depth_bboxes_pc_torch(depth, bboxes, cv_image, self.calib_mat, transform_matrix=transform, min_depth=0.2, max_depth=6.0, depth_factor=1.0, downsampling_factor=10.0, colored=True)
@@ -125,7 +126,6 @@ def main(args=None):
     rclpy.init(args=args)
     node = DetectionNode()
     rclpy.spin(node)
-    node.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':
