@@ -47,10 +47,9 @@ class RecognitionNode(Node):
             self.publisher.publish(msg_out)
 
 
-        self.get_logger().info(f"----------------------------")
-        for i in range(len(recognized_texts)):
+        #for i in range(len(recognized_texts)):
             #if recognized_texts[i] != "no text" and recognized_texts[i] != "\"no text\"" and recognized_texts[i] != "" :
-            self.get_logger().info(f"Recognized text: {recognized_texts[0]}")
+            #self.get_logger().info(f"Recognized text: {recognized_texts[0]}")
             #self.get_logger().info(f"Bounding box: {bboxes[i]}")
             # Show the cropped image (debug)
             #cv2.imshow(recognized_texts[i], image[bboxes[i][0][1]:bboxes[i][1][1], bboxes[i][0][0]:bboxes[i][1][0]])
@@ -102,32 +101,36 @@ class RecognitionNode(Node):
             # Recognise text in cropped region
             recognized_text = self.recognise_text(cropped_img)
             # Filter out the not recognized text
-            if recognized_text.lower() == "no text" and recognized_text.lower() == "['no text']" and recognized_text.lower() == "[no text]":
-                self.get_logger().info(f"No text recognized")
+            if recognized_text.lower() == "no text" or recognized_text.lower() == "['no text']" or recognized_text.lower() == "[no text]" or recognized_text is None:
+                self.get_logger().info(f"No text recognized {recognized_text=}")
                 continue
             else:
                 # The output of ChatGPT is a list if there's any text
                 # TODO add try-catch ?
-                text_list = json.loads(recognized_text)
-                print(text_list)
-                if len(text_list) == 0:
+                try:
+                    text_list = json.loads(recognized_text)
+                    self.get_logger().info(f"Recognized text: {text_list}")
+                    if len(text_list) == 0:
+                        continue
+                    text = ""
+                    # Concatenate the text of this bbox
+                    for i in range(len(text_list)):
+                        if i == 0:
+                            text = text_list[0]
+                        else:
+                            text = text + " " + text_list[i]
+                    recognized_texts.append(text)
+                    aligned_bboxes.append(bbox)
+                except Exception as ex:
+                    self.get_logger().error(f"[crop_and_recognise] Got exception: {ex=} with {recognized_text}")
                     continue
-                text = ""
-                # Concatenate the text of this bbox
-                for i in range(len(text_list)):
-                    if i == 0:
-                        text = text_list[0]
-                    else:
-                        text = text + " " + text_list[i]
-                recognized_texts.append(text)
-                aligned_bboxes.append(bbox)
 
-            ## Show the cropped image
+            ## Show the cropped image DEBUG
             #cv2.imshow("Cropped Image", cropped_img)
             #cv2.waitKey(0)
             #cv2.destroyAllWindows()
 
-            return recognized_texts, aligned_bboxes
+        return recognized_texts, aligned_bboxes
 
 
 def main(args=None):
