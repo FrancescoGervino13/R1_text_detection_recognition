@@ -13,6 +13,8 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ImageBoundingBoxes.msg"
+  "msg/ImageBoundingBoxes2.msg"
+  "msg/AlignedTextsClouds.msg"
   DEPENDENCIES sensor_msgs # Add packages that above messages depend on, in this case sensor_msgs for ImageBoundingBoxes.msg
 )
 

@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'mmocr_ros'
+package_name = 'paddleocr_ros'
 
 setup(
     name=package_name,
@@ -20,13 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-        	'mmocr_node = mmocr_ros.mmocr_node:main',
-        'image_publisher_node = mmocr_ros.image_publisher_node:main',
-        'mmocr_node_try = mmocr_ros.mmocr_node_try:main',
-        'mmocr_node_process = mmocr_ros.mmocr_node_process:main',
-        'image_subscriber = image_subscriber:main',
-        'detection_node = detection_node:main',
-        'recognition_node = recognition_node:main',
+        'det_rec = det_rec:main',
         ],
     },
 )
