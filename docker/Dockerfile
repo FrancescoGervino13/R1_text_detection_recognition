@@ -14,8 +14,8 @@ RUN ln -fs /usr/share/zoneinfo/Europe/Rome /etc/localtime && \
 RUN addgroup ${USER} \
     && useradd -ms /bin/bash ${USER} -g ${USER} \
     && echo "${USER}:${PASSWORD}" | chpasswd \
-    && usermod -a -G sudo ${USER} \
-    && sed -i.bak -e 's/%sudo\s\+ALL=(ALL(:ALL)?)\s\+ALL/%sudo ALL=NOPASSWD:ALL/g' /etc/sudoers
+    && usermod -aG sudo ${USER} \
+    && echo "${USER} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 USER ${USER}
 WORKDIR /home/${USER}
@@ -32,10 +32,11 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 # Upgrade pip & setuptools
 RUN pip install --upgrade pip setuptools
 
-RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129
+RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 
 # PaddlePaddle (CUDA 11.8 build, compatible with driver but not CUDA 12.9 runtime)
-RUN pip install paddlepaddle-gpu==3.1.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu118/
+#RUN pip install paddlepaddle-gpu==3.1.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu118/
+RUN python -m pip install paddlepaddle-gpu==3.1.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu129/
 
 # Core requirements
 RUN pip install \
@@ -43,7 +44,6 @@ RUN pip install \
     opencv-python \
     open3d \
     pyransac3d \
-    message-filters \
     paddleocr \
     sentence-transformers \
     python-Levenshtein \
@@ -70,6 +70,7 @@ RUN sudo apt update && sudo apt install -y \
     ros-$ROS_DISTRO-cv-bridge \
     ros-$ROS_DISTRO-nav2-simple-commander \
     ros-$ROS_DISTRO-rmw-cyclonedds-cpp \
+    ros-$ROS_DISTRO-message-filters \
     ros-dev-tools
 
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
@@ -85,23 +86,23 @@ RUN code --install-extension ms-vscode.cpptools \
         --install-extension eamodio.gitlens
 
 # Clone your repo and install Python parts
-RUN git clone --recurse-submodules https://github.com/FrancescoGervino13/R1_text_detection_recognition.git
+RUN git clone --recurse-submodules -b paddleocr https://github.com/FrancescoGervino13/R1_text_detection_recognition.git
 RUN pip install git+https://github.com/FrancescoGervino13/imgaug.git
 
 # Install your package in editable mode
-RUN cd R1_text_detection_recognition/src/paddleocr_ros/paddleocr_ros/paddleocr && pip install -v -e .
+#RUN cd R1_text_detection_recognition/src/text_rec/paddleocr_ros # && pip install -v -e .
 
 # Build ROS2 workspace
-RUN cd /home/${USER}/R1_text_detection_recognition && \
-    source /opt/ros/${ROS_DISTRO}/setup.bash && \
-    colcon build --symlink-install
+#RUN cd /home/${USER}/R1_text_detection_recognition && \
+#    source /opt/ros/${ROS_DISTRO}/setup.bash && \
+#   colcon build --symlink-install
 
 # Final environment setup
 RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /home/${USER}/.bashrc
 RUN echo "source /home/${USER}/R1_text_detection_recognition/install/setup.bash" >> /home/${USER}/.bashrc
 RUN echo "source /home/${USER}/work_env/bin/activate" >> /home/${USER}/.bashrc
 
-ENV PYTHONPATH=$PYTHONPATH:/home/${USER}/R1_text_detection_recognition/src/paddleocr_ros/paddleocr_ros/paddleocr
+#ENV PYTHONPATH=$PYTHONPATH:/home/${USER}/R1_text_detection_recognition/src/paddleocr_ros/paddleocr_ros/paddleocr
 
 # Final utilities
 RUN sudo apt update && sudo apt install -y iproute2 unzip terminator bash-completion gedit locate && sudo apt clean && sudo rm -rf /var/lib/apt/lists/* && sudo updatedb

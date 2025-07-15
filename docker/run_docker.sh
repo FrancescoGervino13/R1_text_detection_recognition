@@ -1,5 +1,5 @@
 #!/bin/bash
-NAME=simonemiche/r1_text_detector
+NAME=fgervino/r1_text_detector
 TAG=u24-04_cu129_jazzy
 
 sudo xhost +

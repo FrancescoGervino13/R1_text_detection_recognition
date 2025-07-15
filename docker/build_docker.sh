@@ -1,5 +1,5 @@
 #!/bin/bash
-BASE_NAME=simonemiche/r1_text_detector
+BASE_NAME=fgervino/r1_text_detector
 DOCKERFILE=Dockerfile
 TAG=u24-04_cu129_jazzy
 
