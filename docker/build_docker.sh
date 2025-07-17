@@ -1,7 +1,7 @@
 #!/bin/bash
 BASE_NAME=fgervino/r1_text_detector
 DOCKERFILE=Dockerfile
-TAG=u24-04_cu129_jazzy
+TAG=u24-04_cu128_jazzy
 
 
 cd $PWD
