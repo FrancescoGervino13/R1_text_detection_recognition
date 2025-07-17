@@ -1,6 +1,6 @@
 #!/bin/bash
 NAME=fgervino/r1_text_detector
-TAG=u24-04_cu129_jazzy
+TAG=u24-04_cu128_jazzy
 
 sudo xhost +
 if [ -z "${ROS_DOMAIN_ID}" ]; then
