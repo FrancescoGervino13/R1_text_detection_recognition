@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.9.0-devel-ubuntu24.04
+FROM nvidia/cuda:12.8.0-devel-ubuntu24.04
 
 ARG RELEASE
 ARG LAUNCHPAD_BUILD_ARCH
@@ -36,7 +36,7 @@ RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/c
 
 # PaddlePaddle (CUDA 11.8 build, compatible with driver but not CUDA 12.9 runtime)
 #RUN pip install paddlepaddle-gpu==3.1.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu118/
-RUN python -m pip install paddlepaddle-gpu==3.1.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu129/
+RUN python -m pip install paddlepaddle-gpu==3.1.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
 
 # Core requirements
 RUN pip install \
@@ -87,7 +87,7 @@ RUN code --install-extension ms-vscode.cpptools \
 
 # Clone your repo and install Python parts
 RUN git clone --recurse-submodules -b paddleocr https://github.com/FrancescoGervino13/R1_text_detection_recognition.git
-RUN pip install git+https://github.com/FrancescoGervino13/imgaug.git
+#RUN pip install git+https://github.com/FrancescoGervino13/imgaug.git
 
 # Install your package in editable mode
 #RUN cd R1_text_detection_recognition/src/text_rec/paddleocr_ros # && pip install -v -e .
